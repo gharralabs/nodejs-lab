@@ -1,31 +1,40 @@
 ﻿var http = require('http');
-var url = require('url');
+var path = require('path');
+var fs = require('fs');
 
-var pages = [
-    { id : '1', rota : '', saida : 'Woohoo!' },
-    { id : '2', rota : 'sobre', saida : 'A simple routing with Node example!' },
-    { id : '3', rota : 'outra pagina', saida : function () { return 'Rota:' + this.route; } }
-];
+var mimeTypes = {
+    '.js' : 'text/javascript',
+    '.html' : 'text/html',
+    '.css' : 'text/css'
+};
 
 http.createServer(function (req, res) {
     
-    var id;
-    id = url.parse(decodeURI(req.url), true).query.id;
+    var lookup = path.basename(decodeURI(req.url)) || 'index.html';
+    var f = 'conteudo/' + lookup;
     
-    if (id) {
+    fs.exists(f, function (exists) {
         
-        pages.forEach(function (page) {
-            
-            if (page.id === id) {
-                res.writeHead(200, { 'Content-Type' : 'text/html' });
-                res.end(typeof page.saida === 'function' ? page.saida() : page.saida);
-            }
-        });
-    }
-    
-    if (!res.finished) {
-        res.writeHead(404);
-        res.end('Page Not Found');
-    }
+        if (exists) {
 
+            fs.readFile(f, function (err, data) {
+                if (err) {
+                    res.writeHead(500);
+                    res.end('Server Error!');
+                    return;
+                }
+
+                var headers = { 'Content-type' : mimeTypes[path.extname(lookup)] };
+
+                res.writeHead(200, headers);
+                res.end(data);
+            });
+            return;
+        }
+
+        res.writeHead(404);
+        res.end();
+
+    });
+    
 }).listen(9999);
